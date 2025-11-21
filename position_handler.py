@@ -298,7 +298,8 @@ async def cancel_conditional_order(client: httpx.AsyncClient, symbol: str, plan_
         "planType": "normal_plan" 
     }
     # Rückgabe des Ergebnisses ist hier optional, da wir nur die Ausführung benötigen
-    await make_api_request(client, "POST", BASE_URL + CANCEL_PLAN_URL, json_data=cancel_payload)
+    return await make_api_request(client, "POST", BASE_URL + CANCEL_PLAN_URL, json_data=cancel_payload)
+
 
 async def cancel_and_replace_sl(client: httpx.AsyncClient, symbol: str, old_sl: dict, new_size: float, position_side: str, entry_price: float | None):
     """Storniert die alte SL-Order und platziert eine neue mit korrigierter, voller Positionsgröße."""
@@ -319,11 +320,12 @@ async def cancel_and_replace_sl(client: httpx.AsyncClient, symbol: str, old_sl: 
     if cancel_result is None:
         logging.error(f"  !! Fehler beim Stornieren der SL-Order {old_plan_id}. Abbruch der Platzierung.")
         return
-    elif cancel_result == {}:
-        logging.warning(f"  -> Stornierungsversuch fehlgeschlagen (Order existierte nicht). Platziere dennoch neue SL-Order.")
+    
+    if cancel_result == {}:
+        logging.warning(f"  -> Stornierungsversuch fehlgeschlagen (Order existierte nicht oder tolerierbarer API-Fehler). Platziere dennoch neue SL-Order.")
     else:
+        # Stornierung war erfolgreich (Code 00000)
         logging.info(f"  -> Stornierung erfolgreich. Platziere neue SL-Order.")
-
 
     # 2. Platziere die neue SL-Order mit der korrekten Größe (new_size)
     
