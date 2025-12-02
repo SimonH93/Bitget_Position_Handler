@@ -399,14 +399,13 @@ async def cancel_orphan_plan_orders(client: httpx.AsyncClient, open_positions: d
     """Storniert Plan Orders (SL/TP), deren Symbol keine offene Position mehr hat."""
     logging.info("Schritt 3: Suche und storniere verwaiste Plan Orders.")
     
-    # Symbole mit offenen Positionen
-    active_symbols = set(open_positions.keys())
+    active_base_symbols = set(k.rsplit('-', 1)[0] for k in open_positions.keys())
     
     # Symbole mit Conditional Orders
     order_symbols = set(all_plan_orders.keys())
     
     # Symbole, bei denen Conditional Orders existieren, aber keine Position
-    orphan_symbols = order_symbols.difference(active_symbols)
+    orphan_symbols = order_symbols.difference(active_base_symbols)
     
     if not orphan_symbols:
         logging.info("-> Keine verwaisten Plan Orders gefunden. Alles sauber.")
@@ -418,7 +417,7 @@ async def cancel_orphan_plan_orders(client: httpx.AsyncClient, open_positions: d
         orders_to_cancel = all_plan_orders[symbol_key]
         
         try:
-            trading_symbol = symbol_key.rsplit('-', 1)[0]
+            trading_symbol = symbol_key
         except IndexError:
             logging.error(f"Konnte Trading-Symbol nicht aus Key '{symbol_key}' extrahieren. Überspringe Stornierung.")
             continue
@@ -501,9 +500,9 @@ async def run_sl_correction_check(client: httpx.AsyncClient):
             for order in potential_plan_orders:
                  # In diesem Fall sollten wir uns wieder auf Market Orders beschränken, 
                  # da wir nur diese Orders in diesem Script ersetzen und korrigieren wollen.
-                if order.get("orderType") != "limit":
-                     logging.debug(f"Ignoriere Nicht-Limit-Plan-Order {order['planId']} für {symbol} (Typ: {order['orderType']}) im SL-Check (Entry-Price fehlt).")
-                     continue
+                if  order.get("orderType") != "limit" and  order.get("orderType") != "market":
+                    logging.debug(f"Ignoriere Nicht-Limit-Plan-Order {order['planId']} für {symbol} (Typ: {order['orderType']}) im SL-Check (Entry-Price fehlt).")
+                    continue
                      
                 order_side = order["side"]
                 
